@@ -66,6 +66,7 @@ CHATPAY_API_URL=https://chatpay-7anj.onrender.com npm run dev
 
 ## Live Deployment Endpoints
 
+- **Frontend Application**: [https://chatpay-frontend.vercel.app/](https://chatpay-frontend.vercel.app/)
 - **API Base URL**: [https://chatpay-7anj.onrender.com](https://chatpay-7anj.onrender.com)
 - **Health Check**: [https://chatpay-7anj.onrender.com/health](https://chatpay-7anj.onrender.com/health)
 - **Interactive Swagger Docs**: [https://chatpay-7anj.onrender.com/docs](https://chatpay-7anj.onrender.com/docs)
