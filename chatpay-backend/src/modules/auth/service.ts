@@ -2,6 +2,7 @@ import crypto from 'crypto';
 import { Keypair, StrKey } from '@stellar/stellar-sdk';
 import { prisma } from '../../db/prisma.js';
 import { AppError } from '../../types/errors.js';
+import { verifyMessageSignature } from './message-signature.js';
 
 export function formatChallengeMessage(publicKey: string, nonce: string, expiresAt: Date): string {
   return `ChatPay Authentication Challenge\n\nPublic Key: ${publicKey}\nNonce: ${nonce}\nExpires: ${expiresAt.toISOString()}`;
@@ -97,26 +98,11 @@ export class AuthService {
       challengeRecord.expiresAt
     );
 
-    const messageBuffer = Buffer.from(challengeText, 'utf8');
-    const keypair = Keypair.fromPublicKey(publicKey);
-
-    // Verify signature - try base64, then hex
-    let isValid = false;
-    try {
-      const sigBuffer = Buffer.from(signature, 'base64');
-      isValid = keypair.verify(messageBuffer, sigBuffer);
-    } catch {
-      // ignore and try hex
-    }
-
-    if (!isValid) {
-      try {
-        const sigBuffer = Buffer.from(signature, 'hex');
-        isValid = keypair.verify(messageBuffer, sigBuffer);
-      } catch {
-        // failed
-      }
-    }
+    const isValid = verifyMessageSignature({
+      publicKey,
+      message: challengeText,
+      signature
+    });
 
     if (!isValid) {
       throw new AppError('UNAUTHORIZED', 'Invalid cryptographic signature for authentication challenge', 401);

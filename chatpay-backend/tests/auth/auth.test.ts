@@ -127,4 +127,40 @@ describe('Auth Module & Tenant Isolation Tests (FR-A1 to FR-A4)', () => {
 
     expect(verifyRes.statusCode).toBe(401);
   });
+
+  it("verifies Freighter's SEP-53 message signature format", async () => {
+    const userCKeypair = Keypair.random();
+    const challengeRes = await app.inject({
+      method: 'POST',
+      url: '/auth/challenge',
+      payload: {
+        publicKey: userCKeypair.publicKey()
+      }
+    });
+    const { nonce, expiresAt } = JSON.parse(challengeRes.body);
+
+    const message = formatChallengeMessage(userCKeypair.publicKey(), nonce, new Date(expiresAt));
+
+    // Emulate Freighter SEP-53: ed25519_sign(sha256("Stellar Signed Message:\n" + message))
+    const { createHash } = await import('crypto');
+    const prefix = 'Stellar Signed Message:\n';
+    const prefixedBuffer = Buffer.concat([Buffer.from(prefix, 'utf8'), Buffer.from(message, 'utf8')]);
+    const sha256Hash = createHash('sha256').update(prefixedBuffer).digest();
+    const freighterSignature = userCKeypair.sign(sha256Hash).toString('base64');
+
+    const verifyRes = await app.inject({
+      method: 'POST',
+      url: '/auth/verify',
+      payload: {
+        publicKey: userCKeypair.publicKey(),
+        signature: freighterSignature,
+        nonce
+      }
+    });
+
+    expect(verifyRes.statusCode).toBe(200);
+    const verifyBody = JSON.parse(verifyRes.body);
+    expect(verifyBody).toHaveProperty('token');
+    expect(verifyBody.user.publicKey).toBe(userCKeypair.publicKey());
+  });
 });
